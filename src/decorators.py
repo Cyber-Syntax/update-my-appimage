@@ -27,7 +27,11 @@ def handle_common_errors(func):
         except EOFError as error:
             handle_error(func.__name__, error, "EOF error. Input cannot be empty.")
         except KeyError as error:
-            handle_error(func.__name__, error, "Key error. The key doesn't exist.")
+            handle_error(
+                func.__name__,
+                error,
+                "Key error. The key doesn't exist. Also, the API may hit its rate limit if it is used more than 15 times.s",
+            )
         except FileNotFoundError as error:
             handle_error(func.__name__, error, "File not found error.")
         except Exception as error:
