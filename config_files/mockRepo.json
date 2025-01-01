@@ -1,0 +1,11 @@
+{
+  "owner": "mockOwner",
+  "repo": "mockRepo",
+  "appimage": "mockRepo-1.0.0.AppImage",
+  "version": "1.0.0",
+  "sha": "mock-latest-linux.yml",
+  "hash_type": "sha512",
+  "choice": 2,
+  "appimage_folder_backup": "~/Documents/repository/my-unicorn/",
+  "appimage_folder": "~/Documents/repository/my-unicorn/"
+}
