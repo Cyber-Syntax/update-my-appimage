@@ -128,31 +128,6 @@ class AppImageDownloader:
                 break
 
     @handle_common_errors
-    def save_credentials(self):
-        """Save the credentials to a file in json format from response"""
-        self.appimages["owner"] = self.owner
-        self.appimages["repo"] = self.repo
-        self.appimages["appimage"] = self.appimage_name
-        self.appimages["version"] = self.version
-        self.appimages["sha"] = self.sha_name
-        self.appimages["hash_type"] = self.hash_type
-        # Backup or not choice. 3 is backup(self.choice == 1), 4 is overwrite(self.choice == 2)
-        self.appimages["choice"] = 3 if self.choice == 1 else 4
-
-        # Handling trailing slashes
-        self.appimage_folder_backup = os.path.join(self.appimage_folder_backup, "")
-        self.appimage_folder = os.path.join(self.appimage_folder, "")
-
-        self.appimages["appimage_folder_backup"] = self.appimage_folder_backup
-        self.appimages["appimage_folder"] = self.appimage_folder
-
-        # save the credentials to a config_files folder
-        with open(f"{self.file_path}{self.repo}.json", "w", encoding="utf-8") as file:
-            json.dump(self.appimages, file, indent=4)
-        print(f"Saved credentials to config_files/{self.repo}.json file")
-        self.load_credentials()
-
-    @handle_common_errors
     def load_credentials(self):
         """Load the credentials from a json file"""
         json_path = f"{self.file_path}{self.repo}.json"

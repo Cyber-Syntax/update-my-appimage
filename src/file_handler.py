@@ -6,11 +6,12 @@ import sys
 import logging
 import json
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import requests
 import yaml
 from src.decorators import handle_api_errors, handle_common_errors
 from src.app_image_downloader import AppImageDownloader
+from src.version_manager import VersionManager
 
 
 @dataclass
@@ -19,6 +20,50 @@ class FileHandler(AppImageDownloader):
 
     sha_name: str = None
     sha_url: str = None
+    version_manager: VersionManager = field(default_factory=VersionManager)
+
+    @handle_common_errors
+    def save_credentials(self):
+        """Save the credentials to a file in json format from response"""
+        self.appimages["owner"] = self.owner
+        self.appimages["repo"] = self.repo
+        self.appimages["appimage"] = self.appimage_name
+        self.appimages["version"] = self.version
+        self.appimages["sha"] = self.sha_name
+        self.appimages["hash_type"] = self.hash_type
+        self.appimages["choice"] = 3 if self.choice == 1 else 4
+
+        self.appimage_folder_backup = os.path.join(self.appimage_folder_backup, "")
+        self.appimage_folder = os.path.join(self.appimage_folder, "")
+
+        self.appimages["appimage_folder_backup"] = self.appimage_folder_backup
+        self.appimages["appimage_folder"] = self.appimage_folder
+
+        with open(f"{self.file_path}{self.repo}.json", "w", encoding="utf-8") as file:
+            json.dump(self.appimages, file, indent=4)
+        print(f"Saved credentials to config_files/{self.repo}.json file")
+
+        # Save the installed version to the versions.json file
+        self.version_manager.add_version(self.repo, self.version, self.appimage_name)
+
+        self.load_credentials()
+
+    def load_config_versions(self):
+        """Load the app versions from the config_files."""
+        config_versions = {}
+        for file_name in os.listdir(self.file_path):
+            if file_name.endswith(".json"):
+                with open(
+                    os.path.join(self.file_path, file_name), "r", encoding="utf-8"
+                ) as file:
+                    app_image = json.load(file)
+                    config_versions[app_image["repo"]] = app_image["version"]
+        return config_versions
+
+    def compare_versions(self):
+        """Compare versions in versions.json with config_files."""
+        config_versions = self.load_config_versions()
+        self.version_manager.compare_versions(config_versions)
 
     @staticmethod
     def sha_response_error(func):
