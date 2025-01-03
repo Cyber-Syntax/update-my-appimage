@@ -358,6 +358,7 @@ class FileHandler(AppImageDownloader):
 
     # INFO: Cause API RATE LIMIT EXCEEDED if used more than 15 - 20 times
     # KeyError: 'tag_name' means that API RATE LIMIT EXCEEDED.
+
     @handle_common_errors
     def check_updates_json_all(self):
         """Check for updates for all JSON files"""
@@ -390,6 +391,20 @@ class FileHandler(AppImageDownloader):
                 print("-------------------------------------------------")
                 # Append to queue appimages that are not up to date
                 appimages_to_update.append(appimages["repo"])
+                self.version_manager.add_version(
+                    appimages["repo"], latest_version, appimages["appimage"]
+                )
+
+        # Ensure versions.json exists
+        if not os.path.exists(self.version_manager.version_file_path):
+            self.version_manager.save_versions()
+
+        # Compare with versions.json
+        config_versions = {
+            app["repo"]: app["version"]
+            for app in self.version_manager.versions.values()
+        }
+        self.version_manager.compare_versions(config_versions)
 
         # If all appimages are up to date
         if not appimages_to_update:
@@ -457,5 +472,10 @@ class FileHandler(AppImageDownloader):
             self.verify_sha()
             self.make_executable()
             self.handle_file_operations(batch_mode=batch_mode)
+
+            # Update the version in versions.json
+            self.version_manager.add_version(
+                self.repo, self.version, self.appimage_name
+            )
 
         print("Update process completed for all selected appimages.")
