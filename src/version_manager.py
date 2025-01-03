@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 import os
 import json
+import requests
 
 
 @dataclass
@@ -17,8 +18,16 @@ class VersionManager:
     def load_versions(self):
         """Load the app versions from the versions.json file."""
         if os.path.exists(self.version_file_path):
-            with open(self.version_file_path, "r", encoding="utf-8") as version_file:
-                self.versions = json.load(version_file)
+            try:
+                with open(
+                    self.version_file_path, "r", encoding="utf-8"
+                ) as version_file:
+                    self.versions = json.load(version_file)
+            except json.JSONDecodeError:
+                print(
+                    f"Error decoding JSON from {self.version_file_path}, initializing with empty versions."
+                )
+                self.versions = {}
         else:
             self.versions = {}
 
@@ -49,3 +58,20 @@ class VersionManager:
                 print(discrepancy)
         else:
             print("All versions are up to date.")
+
+    def fetch_version_info(self, owner, repo):
+        """Fetch version information from GitHub API."""
+        api_url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
+        response = requests.get(api_url, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            version = data["tag_name"].replace("v", "")
+            appimage_name = None
+            for asset in data["assets"]:
+                if asset["name"].endswith(".AppImage"):
+                    appimage_name = asset["name"]
+                    break
+            return version, appimage_name
+        else:
+            print(f"Failed to fetch version info for {owner}/{repo}")
+            return None, None

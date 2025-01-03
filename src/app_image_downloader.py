@@ -29,6 +29,48 @@ class AppImageDownloader:
     appimages: dict = field(default_factory=dict)
     file_path: str = "config_files/"
 
+    def create_versions_json(self):
+        """Create versions.json file from config_files."""
+        config_files = [
+            file for file in os.listdir(self.file_path) if file.endswith(".json")
+        ]
+
+        for config_file in config_files:
+            config_path = os.path.join(self.file_path, config_file)
+            with open(config_path, "r", encoding="utf-8") as file:
+                config_data = json.load(file)
+                owner = config_data["owner"]
+                repo = config_data["repo"]
+
+                # Fetch version info from GitHub API
+                api_url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
+                response = requests.get(api_url, timeout=10)
+
+                if response.status_code == 200:
+                    data = response.json()
+                    version = data["tag_name"].replace("v", "")
+                    appimage_name = next(
+                        (
+                            asset["name"]
+                            for asset in data["assets"]
+                            if asset["name"].endswith(".AppImage")
+                        ),
+                        None,
+                    )
+
+                    if version and appimage_name:
+                        self.version_manager.add_version(repo, version, appimage_name)
+                    else:
+                        print(f"Failed to fetch version info for {repo}")
+                else:
+                    print(
+                        f"Failed to fetch version info for {repo} from API: {api_url}"
+                    )
+
+        # Save the versions to versions.json
+        self.version_manager.save_versions()
+        print("versions.json file created.")
+
     # TODO: is try except needed or decorator handle it?
     @handle_common_errors
     def ask_user(self):

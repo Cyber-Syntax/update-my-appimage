@@ -396,8 +396,7 @@ class FileHandler(AppImageDownloader):
                 )
 
         # Ensure versions.json exists
-        if not os.path.exists(self.version_manager.version_file_path):
-            self.version_manager.save_versions()
+        self.create_versions_json()
 
         # Compare with versions.json
         config_versions = {
@@ -436,9 +435,8 @@ class FileHandler(AppImageDownloader):
             selected_appimages = [appimages_to_update[idx] for idx in selected_indices]
 
             # Update the selected appimages
-            self.update_selected_appimages(selected_appimages)
+            self.update_selected_appimages(selected_appimages) @ handle_common_errors
 
-    @handle_common_errors
     def update_selected_appimages(self, appimages_to_update):
         """Update all appimages"""
         if len(appimages_to_update) > 1:

@@ -2,6 +2,7 @@
 import sys
 import logging
 from src.file_handler import FileHandler
+from src.version_manager import VersionManager
 
 
 def custom_excepthook(exc_type, exc_value, exc_traceback):
@@ -29,7 +30,8 @@ def get_user_choice():
     print("2. Download new AppImage (create config file)")
     print("3. Customize AppImage config file")
     print("4. Update all AppImages")
-    print("5. Exit")
+    print("5. Create versions.json file")
+    print("6. Exit")
     print("====================================")
     try:
         return int(input("Enter your choice: "))
@@ -132,6 +134,8 @@ def main():
         elif choice == 4:
             file_handler.check_updates_json_all()
         elif choice == 5:
+            file_handler.create_versions_json()
+        elif choice == 6:
             print("Exiting...")
             sys.exit()
         else:
