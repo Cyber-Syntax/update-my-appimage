@@ -61,7 +61,9 @@ class AppImageDownloader:
                     )
 
                     if version and appimage_name:
-                        self.version_manager.add_version(repo, version, appimage_name)
+                        self.version_manager.add_version(
+                            owner, repo, version, appimage_name
+                        )
                     else:
                         print(f"Failed to fetch version info for {repo}")
                 else:

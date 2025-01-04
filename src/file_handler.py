@@ -362,56 +362,31 @@ class FileHandler(AppImageDownloader):
     @handle_common_errors
     def check_updates_json_all(self):
         """Check for updates for all JSON files"""
-        json_files = [
-            file for file in os.listdir(self.file_path) if file.endswith(".json")
-        ]
-
         # Load versions from versions.json
         versions = self.version_manager.versions
 
         # Create a queue for not up-to-date appimages
         appimages_to_update = []
 
-        # Print appimages name and versions from JSON files
-        for file in json_files:
-            with open(f"{self.file_path}{file}", "r", encoding="utf-8") as file:
-                appimages = json.load(file)
+        # Check each version in versions.json
+        for repo, data in versions.items():
+            current_version = data["version"]
+            appimage_name = data["appimage_name"]
+            owner = data["owner"]
 
-            repo = appimages["repo"]
-            current_version = appimages["version"]
+            # Check version via GitHub API
+            response = requests.get(
+                f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
+            )
+            latest_version = response.json()["tag_name"].replace("v", "")
 
-            # Check version in versions.json
-            if repo in versions and versions[repo]["version"] != current_version:
-                print(
-                    f"{appimages['appimage']} is not up to date according to versions.json"
-                )
-                appimages_to_update.append(appimages["repo"])
-            else:
-                # Check version via GitHub API
-                response = requests.get(
-                    f"https://api.github.com/repos/{appimages['owner']}/{appimages['repo']}/releases/latest"
-                )
-                latest_version = response.json()["tag_name"].replace("v", "")
-
-                if latest_version == current_version:
-                    print(f"{appimages['appimage']} is up to date")
-                else:
-                    print("-------------------------------------------------")
-                    print(f"{appimages['appimage']} is not up to date")
-                    print(f"\033[42mLatest version: {latest_version}\033[0m")
-                    print(f"Current version: {current_version}")
-                    print("-------------------------------------------------")
-                    # Append to queue appimages that are not up to date
-                    appimages_to_update.append(appimages["repo"])
-                    self.version_manager.add_version(
-                        appimages["repo"], latest_version, appimages["appimage"]
-                    )
-
-        # Compare with versions.json
-        config_versions = {
-            repo: app["version"] for repo, app in self.version_manager.versions.items()
-        }
-        self.version_manager.compare_versions(config_versions)
+            if latest_version != current_version:
+                print("-------------------------------------------------")
+                print(f"{appimage_name} is not up to date")
+                print(f"\033[42mLatest version: {latest_version}\033[0m")
+                print(f"Current version: {current_version}")
+                print("-------------------------------------------------")
+                appimages_to_update.append(repo)
 
         # If all appimages are up to date
         if not appimages_to_update:

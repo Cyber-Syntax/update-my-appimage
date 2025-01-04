@@ -37,9 +37,13 @@ class VersionManager:
             json.dump(self.versions, version_file, indent=4)
         print(f"Saved app versions to {self.version_file_path}")
 
-    def add_version(self, repo, version, appimage_name):
+    def add_version(self, owner, repo, version, appimage_name):
         """Add or update an app version."""
-        self.versions[repo] = {"version": version, "appimage_name": appimage_name}
+        self.versions[repo] = {
+            "owner": owner,
+            "version": version,
+            "appimage_name": appimage_name,
+        }
         self.save_versions()
 
     def compare_versions(self, config_versions):
