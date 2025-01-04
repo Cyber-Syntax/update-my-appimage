@@ -363,6 +363,7 @@ class FileHandler(AppImageDownloader):
     def check_updates_json_all(self):
         """Check for updates for all JSON files"""
         # Load versions from versions.json
+        self.version_manager.load_versions()
         versions = self.version_manager.versions
 
         # Create a queue for not up-to-date appimages
@@ -373,20 +374,23 @@ class FileHandler(AppImageDownloader):
             current_version = data["version"]
             appimage_name = data["appimage_name"]
             owner = data["owner"]
+            repo = data["repo"]
 
             # Check version via GitHub API
             response = requests.get(
                 f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
             )
-            latest_version = response.json()["tag_name"].replace("v", "")
-
-            if latest_version != current_version:
-                print("-------------------------------------------------")
-                print(f"{appimage_name} is not up to date")
-                print(f"\033[42mLatest version: {latest_version}\033[0m")
-                print(f"Current version: {current_version}")
-                print("-------------------------------------------------")
-                appimages_to_update.append(repo)
+            if response.status_code == 200:
+                latest_version = response.json()["tag_name"].replace("v", "")
+                if latest_version != current_version:
+                    print("-------------------------------------------------")
+                    print(f"{appimage_name} is not up to date")
+                    print(f"\033[42mLatest version: {latest_version}\033[0m")
+                    print(f"Current version: {current_version}")
+                    print("-------------------------------------------------")
+                    appimages_to_update.append(repo)
+            else:
+                print(f"Failed to fetch version info for {repo} from API")
 
         # If all appimages are up to date
         if not appimages_to_update:
@@ -448,8 +452,27 @@ class FileHandler(AppImageDownloader):
 
         for appimage in appimages_to_update:
             print(f"Updating {appimage}...")
-            self.repo = appimage
-            self.load_credentials()
+            repo_data = self.version_manager.versions[appimage]
+            self.owner = repo_data["owner"]
+            self.repo = repo_data["repo"]
+            self.appimage_name = repo_data["appimage_name"]
+            self.version = repo_data["version"]
+
+            # Load additional info from config_files
+            with open(
+                f"{self.file_path}{self.repo}.json", "r", encoding="utf-8"
+            ) as file:
+                config_data = json.load(file)
+                self.sha_name = config_data["sha"]
+                self.hash_type = config_data["hash_type"]
+                self.choice = config_data["choice"]
+                self.appimage_folder = os.path.expanduser(
+                    config_data["appimage_folder"]
+                )
+                self.appimage_folder_backup = os.path.expanduser(
+                    config_data["appimage_folder_backup"]
+                )
+
             self.get_response()
             self.download()
             self.verify_sha()
@@ -460,6 +483,7 @@ class FileHandler(AppImageDownloader):
             updated_appimages.append(
                 {
                     "repo": self.repo,
+                    "owner": self.owner,
                     "version": self.version,
                     "appimage_name": self.appimage_name,
                 }
@@ -468,7 +492,10 @@ class FileHandler(AppImageDownloader):
         # Update the version in versions.json after successful updates
         for appimage in updated_appimages:
             self.version_manager.add_version(
-                appimage["repo"], appimage["version"], appimage["appimage_name"]
+                appimage["repo"],
+                appimage["owner"],
+                appimage["version"],
+                appimage["appimage_name"],
             )
 
         print("Update process completed for all selected appimages.")
