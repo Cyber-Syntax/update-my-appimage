@@ -6,6 +6,7 @@ import requests
 from tqdm import tqdm
 from dataclasses import dataclass, field
 from src.decorators import handle_api_errors, handle_common_errors
+from src.version_manager import VersionManager
 
 
 @dataclass
@@ -28,6 +29,7 @@ class AppImageDownloader:
     choice: int = None
     appimages: dict = field(default_factory=dict)
     file_path: str = "config_files/"
+    version_manager: VersionManager = field(default_factory=VersionManager)
 
     def create_versions_json(self):
         """Create versions.json file from config_files."""

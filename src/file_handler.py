@@ -366,6 +366,9 @@ class FileHandler(AppImageDownloader):
             file for file in os.listdir(self.file_path) if file.endswith(".json")
         ]
 
+        # Load versions from versions.json
+        versions = self.version_manager.versions
+
         # Create a queue for not up-to-date appimages
         appimages_to_update = []
 
@@ -374,34 +377,39 @@ class FileHandler(AppImageDownloader):
             with open(f"{self.file_path}{file}", "r", encoding="utf-8") as file:
                 appimages = json.load(file)
 
-            # Check version via GitHub API
-            response = requests.get(
-                f"https://api.github.com/repos/{appimages['owner']}/{appimages['repo']}/releases/latest"
-            )
-            latest_version = response.json()["tag_name"].replace("v", "")
+            repo = appimages["repo"]
+            current_version = appimages["version"]
 
-            # Compare with above versions
-            if latest_version == appimages["version"]:
-                print(f"{appimages['appimage']} is up to date")
-            else:
-                print("-------------------------------------------------")
-                print(f"{appimages['appimage']} is not up to date")
-                print(f"\033[42mLatest version: {latest_version}\033[0m")
-                print(f"Current version: {appimages['version']}")
-                print("-------------------------------------------------")
-                # Append to queue appimages that are not up to date
-                appimages_to_update.append(appimages["repo"])
-                self.version_manager.add_version(
-                    appimages["repo"], latest_version, appimages["appimage"]
+            # Check version in versions.json
+            if repo in versions and versions[repo]["version"] != current_version:
+                print(
+                    f"{appimages['appimage']} is not up to date according to versions.json"
                 )
+                appimages_to_update.append(appimages["repo"])
+            else:
+                # Check version via GitHub API
+                response = requests.get(
+                    f"https://api.github.com/repos/{appimages['owner']}/{appimages['repo']}/releases/latest"
+                )
+                latest_version = response.json()["tag_name"].replace("v", "")
 
-        # Ensure versions.json exists
-        self.create_versions_json()
+                if latest_version == current_version:
+                    print(f"{appimages['appimage']} is up to date")
+                else:
+                    print("-------------------------------------------------")
+                    print(f"{appimages['appimage']} is not up to date")
+                    print(f"\033[42mLatest version: {latest_version}\033[0m")
+                    print(f"Current version: {current_version}")
+                    print("-------------------------------------------------")
+                    # Append to queue appimages that are not up to date
+                    appimages_to_update.append(appimages["repo"])
+                    self.version_manager.add_version(
+                        appimages["repo"], latest_version, appimages["appimage"]
+                    )
 
         # Compare with versions.json
         config_versions = {
-            app["repo"]: app["version"]
-            for app in self.version_manager.versions.values()
+            repo: app["version"] for repo, app in self.version_manager.versions.items()
         }
         self.version_manager.compare_versions(config_versions)
 
@@ -435,7 +443,7 @@ class FileHandler(AppImageDownloader):
             selected_appimages = [appimages_to_update[idx] for idx in selected_indices]
 
             # Update the selected appimages
-            self.update_selected_appimages(selected_appimages) @ handle_common_errors
+            self.update_selected_appimages(selected_appimages)
 
     def update_selected_appimages(self, appimages_to_update):
         """Update all appimages"""
@@ -461,6 +469,8 @@ class FileHandler(AppImageDownloader):
                 "Batch mode is disabled. You will be prompted for each appimage update."
             )
 
+        updated_appimages = []
+
         for appimage in appimages_to_update:
             print(f"Updating {appimage}...")
             self.repo = appimage
@@ -471,9 +481,19 @@ class FileHandler(AppImageDownloader):
             self.make_executable()
             self.handle_file_operations(batch_mode=batch_mode)
 
-            # Update the version in versions.json
+            # Append to the list of successfully updated appimages
+            updated_appimages.append(
+                {
+                    "repo": self.repo,
+                    "version": self.version,
+                    "appimage_name": self.appimage_name,
+                }
+            )
+
+        # Update the version in versions.json after successful updates
+        for appimage in updated_appimages:
             self.version_manager.add_version(
-                self.repo, self.version, self.appimage_name
+                appimage["repo"], appimage["version"], appimage["appimage_name"]
             )
 
         print("Update process completed for all selected appimages.")
